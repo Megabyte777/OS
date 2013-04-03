@@ -79,15 +79,15 @@ int get_next_token(char *read_buffer, char *write_buffer, const int buf_size,
     return 1;
 }
 
-void print(char *write_buffer, int available, int count)
+void print(char *write_buffer, int *available, int count)
 {
     int ret;
     for (; count > 0; count--)
     {
         int written = 0;
-        while (written < available)
+        while (written < *available)
         {
-            ret = write(1, write_buffer + written, available);
+            ret = write(1, write_buffer + written, *available);
             written += ret;
             if (ret < 0)
             {
@@ -95,7 +95,7 @@ void print(char *write_buffer, int available, int count)
             }
         }
     }
-    available = 0;
+    *available = 0;
 }
 
 int main(int argc, char *argv[])
@@ -122,9 +122,9 @@ int main(int argc, char *argv[])
     int available = 0;
     while (get_next_token(read_buffer, write_buffer, buf_size, &len, &available) > 0)
     {
-        print(write_buffer, available, 2);
+        print(write_buffer, &available, 2);
     }
-    print(write_buffer, available, 2);
+    print(write_buffer, &available, 2);
     free(read_buffer);
     free(write_buffer);
     return 0;
