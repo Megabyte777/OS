@@ -10,8 +10,7 @@ int get_next_token(char *read_buffer, char *write_buffer, const int buf_size,
     int ready = 0;
     while (ready == 0)
     {
-        int ret = 1;
-        ret = read(0, read_buffer + *len, buf_size - *len);
+        int ret = read(0, read_buffer + *len, buf_size - *len);
         if (ret <= 0)
         {
             if ((*len > 0) && (long_string == 0) && 
@@ -40,7 +39,10 @@ int get_next_token(char *read_buffer, char *write_buffer, const int buf_size,
                 }
                 start++;
             }
-            long_string = 0;
+            if (start < *len)
+            {
+                long_string = 0;
+            }
         }
         found_nl = 0;
         int end = start;
