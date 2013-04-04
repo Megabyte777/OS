@@ -87,7 +87,7 @@ void print(char *write_buffer, int *available, int count)
         int written = 0;
         while (written < *available)
         {
-            ret = write(1, write_buffer + written, *available);
+            ret = write(1, write_buffer + written, *available - written);
             written += ret;
             if (ret < 0)
             {
