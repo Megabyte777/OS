@@ -1,0 +1,31 @@
+#!/bin/bash
+
+function find_broken_symlinks()
+{
+    PREFIX="$(dirname "$1")"
+    if [[ "$PREFIX" = / ]]
+    then
+        PREFIX=""
+    fi
+    if [[ "$(basename "$1")" != "" ]]
+    then
+        PREFIX="$PREFIX/$(basename "$1")"
+    fi
+    for file in "$PREFIX"/*
+    do
+        if [[ -e "$file" || -L "$file" ]]
+        then
+            if [[ -d "$file" ]]
+            then
+                find_broken_symlinks "$file"
+            else
+                if [[ -L "$file" && !(-e "$file") ]]
+                then
+                    echo "$file"
+                fi
+            fi
+        fi
+    done
+}
+
+find_broken_symlinks "$1"
