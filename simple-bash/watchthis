@@ -14,12 +14,16 @@ shift
 
 "$@" > "$prev"
 echo -n "" > "$cur"
+cat "$prev"
 diff -u "$cur" "$prev"
+echo -e "\n"
 
 while true
 do
     sleep "$period"
     "$@" > "$cur"
+    cat "$cur"
     diff -u "$prev" "$cur"
     cat "$cur" > "$prev"
+    echo -e "\n"
 done
