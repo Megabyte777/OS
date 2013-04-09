@@ -7,7 +7,7 @@ function find_broken_symlinks()
     then
         PREFIX=""
     fi
-    if [[ "$(basename "$1")" != "" ]]
+    if [[ -n "$(basename "$1")" ]]
     then
         PREFIX="$PREFIX/$(basename "$1")"
     fi
