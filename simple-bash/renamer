@@ -1,0 +1,14 @@
+#!/bin/bash
+
+for file in "$@"
+do
+    if [[ -e "$file" ]]
+    then
+        echo "$file"
+        read new_name
+        if [[ -n "$new_name" ]]
+        then
+            mv "$file" "$new_name"
+        fi
+    fi
+done
