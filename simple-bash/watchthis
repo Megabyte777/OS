@@ -1,0 +1,25 @@
+#!/bin/bash
+
+dir=".watchthis"
+if [[ !(-d "dir") ]]
+then
+    mkdir "$dir"
+fi 
+
+prev="$dir/prev.txt"
+cur="$dir/cur.txt"
+
+period="$1"
+shift
+
+"$@" > "$prev"
+echo -n "" > "$cur"
+diff -u "$cur" "$prev"
+
+while true
+do
+    sleep "$period"
+    "$@" > "$cur"
+    diff -u "$prev" "$cur"
+    cat "$cur" > "$prev"
+done
