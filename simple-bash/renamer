@@ -6,7 +6,7 @@ do
     then
         echo "$file"
         read new_name
-        if [[ -n "$new_name" ]]
+        if [[ -n "$new_name" && !(-e "$new_name") ]]
         then
             mv "$file" "$new_name"
         fi
