@@ -28,4 +28,7 @@ function find_broken_symlinks()
     done
 }
 
-find_broken_symlinks "$1"
+for dir in "$@" 
+do
+    find_broken_symlinks "$dir"
+done
