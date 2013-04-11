@@ -13,16 +13,13 @@ function find_broken_symlinks()
     fi
     for file in "$PREFIX"/*
     do
-        if [[ -e "$file" || -L "$file" ]]
+        if [[ -L "$file" && !(-e "$file") ]]
         then
-            if [[ -d "$file" ]]
+            echo "$file"
+        else
+            if [[ !(-L "$file") && -d "$file" ]]
             then
                 find_broken_symlinks "$file"
-            else
-                if [[ -L "$file" && !(-e "$file") ]]
-                then
-                    echo "$file"
-                fi
             fi
         fi
     done
