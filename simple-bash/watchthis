@@ -1,13 +1,13 @@
 #!/bin/bash
 
-dir=".watchthis"
+dir="/tmp"
 if [[ !(-d "dir") ]]
 then
     mkdir "$dir"
 fi 
 
-prev="$dir/prev.txt"
-cur="$dir/cur.txt"
+prev="$dir/watchthis_prev.txt"
+cur="$dir/watchthis_cur.txt"
 
 period="$1"
 shift
