@@ -1,6 +1,6 @@
 #!/bin/bash
 
-dir="/tmp"
+dir="/var/tmp"
 if [[ !(-d "dir") ]]
 then
     mkdir "$dir"
