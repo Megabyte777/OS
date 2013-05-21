@@ -3,8 +3,7 @@
 #include <dirent.h>
 #include <string.h>
 #include <stdlib.h>
-
-#define MAX_FILENAME_APPENDIX 260
+#include <limits.h>
 
 void write_(int fd, char * const s, size_t len)
 {
@@ -29,7 +28,7 @@ void* my_alloc(size_t size)
 void find_broken_symlinks(char * const prefix)
 {
     size_t len = strlen(prefix);
-    char *filename = my_alloc(len + MAX_FILENAME_APPENDIX);
+    char *filename = my_alloc(len + NAME_MAX + 1);
     memcpy(filename, prefix, len + 1);
     if (filename[len - 1] != '/')
     {
@@ -43,8 +42,7 @@ void find_broken_symlinks(char * const prefix)
     struct dirent *file;
     while ((file = readdir(dirp)) != NULL)
     {
-        if (strcmp(file->d_name, ".") != 0 && 
-                strcmp(file->d_name, "..") != 0)
+        if (strcmp(file->d_name, ".") != 0 && strcmp(file->d_name, "..") != 0)
         {
             strcat(filename, file->d_name);
             if (file->d_type == DT_LNK && access(filename, F_OK) == -1)
