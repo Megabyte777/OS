@@ -1,4 +1,2 @@
-CC=gcc
-CFLAGS=-Wall
-
-main:
+all: main.c
+	gcc -Wall -Wextra -Werror main.c -o main
