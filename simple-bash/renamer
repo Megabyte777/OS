@@ -6,9 +6,10 @@ do
     then
         echo "$file"
         read new_name
-        if [[ -n "$new_name" && !(-e "$new_name") ]]
+        dir="$(dirname "$file")"
+        if [[ -n "$new_name" && !(-e "$dir/$new_name") ]]
         then
-            mv "$file" "$new_name"
+            mv "$file" "$dir/$new_name"
         fi
     fi
 done
