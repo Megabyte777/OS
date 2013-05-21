@@ -2,87 +2,84 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+typedef enum state
+{
+    NORMAL,
+    LONG_STRING,
+    IGNORING
+} state;
 
-int get_next_token(char *read_buffer, char *write_buffer, const int buf_size, 
+int get_next_token(char *read_buffer, char *write_buffer, const int buf_size,
         int *len, int *available)
 {
-    int long_string = 0;
-    int first_overflow = 0;
-    int ready = 0;
+    state status = NORMAL;
     for (;;)
     {
         int ret = read(0, read_buffer + *len, buf_size - *len);
         if (ret <= 0)
         {
-            memcpy(write_buffer, read_buffer, (*len) * sizeof(char));
-            if (first_overflow != 0)
+            memcpy(write_buffer, read_buffer, *len);
+            switch (status)
             {
-                *available = buf_size + 1;
-            }
-            else if (long_string == 0)
-            {
-                if (((*len) != 0) && (write_buffer[(*len) - 1] != '\n'))
+            case NORMAL:
+                if (*len != 0 && write_buffer[*len - 1] != '\n')
                 {
                     write_buffer[*len] = '\n';
                     (*len)++;
                 }
                 *available = *len;
+                break;
+            case LONG_STRING:
+                *available = buf_size + 1;
+            default:
+                break;
             }
             return ret;
         }
         (*len) += ret;
-        if (first_overflow == 1)
+        if (status == LONG_STRING)
         {
             if (read_buffer[0] == '\n')
             {
                 *available = buf_size + 1;
-                memmove(read_buffer, read_buffer + 1, ((*len) - 1) * sizeof(char));
+                memmove(read_buffer, read_buffer + 1, *len - 1);
                 (*len)--;
                 return 1;
             }
             else
-            {
-                long_string = 1;
-                first_overflow = 0;
-            }
+                status = IGNORING;
         }
         int end = 0;
-        if (long_string != 0)
+        if (status == IGNORING)
         {
-            while ((end < (*len - 1)) && (read_buffer[end] != '\n'))
-            {
+            while (end < *len - 1 && read_buffer[end] != '\n')
                 end++;
-            }
             if (read_buffer[end] == '\n')
-            {
-                long_string = 0;
-            }
+                status = NORMAL;
             end++;
             (*len) -= end;
-            memmove(read_buffer, read_buffer + end, (*len) * sizeof(char));
+            memmove(read_buffer, read_buffer + end, *len);
         }
         end = 0;
-        while ((end < *len) && (read_buffer[end] != '\n'))
-        {
+        while (end < *len && read_buffer[end] != '\n')
             end++;
-        }
-        if (end >= *len)
+        if (end == *len)
         {
             if (*len == buf_size)
             {
-                first_overflow = 1;
-                memcpy(write_buffer, read_buffer, (*len) * sizeof(char));
+                status = LONG_STRING;
+                memcpy(write_buffer, read_buffer, *len);
                 write_buffer[buf_size] = '\n';
                 *len = 0;
             }
         }
         else
         {
-            long_string = 0;
+            status = NORMAL;
             *available = end + 1;
-            memcpy(write_buffer, read_buffer, (*available) * sizeof(char));
+            memcpy(write_buffer, read_buffer, *available);
             (*len) -= end + 1;
-            memmove(read_buffer, read_buffer + end + 1, (*len) * sizeof(char));
+            memmove(read_buffer, read_buffer + end + 1, *len);
             return 1;
         }
     }
@@ -90,48 +87,39 @@ int get_next_token(char *read_buffer, char *write_buffer, const int buf_size,
 
 void print(char *write_buffer, int *available, int count)
 {
-    int ret;
     for (; count > 0; count--)
     {
         int written = 0;
         while (written < *available)
         {
-            ret = write(1, write_buffer + written, *available - written);
+            int ret = write(1, write_buffer + written, *available - written);
             written += ret;
             if (ret < 0)
-            {
-                return;
-            }
+                _exit(EXIT_FAILURE);
         }
     }
     *available = 0;
 }
 
+void* my_alloc(size_t size)
+{
+    void *data = malloc(size);
+    if (data == 0)
+        _exit(EXIT_FAILURE);
+    return data;
+}
+
 int main(int argc, char *argv[])
 {
-    int buf_size;
-    if (argc > 1)
-    {
-        buf_size = 0;
-        int i;
-        for (i = 0; argv[1][i] != 0; i++)
-        {
-            buf_size *= 10;
-            buf_size += argv[1][i] - '0';
-        }
-    }
-    else
-    {
-        buf_size = 5;
-    }
-    char *read_buffer = malloc(buf_size);
-    char *write_buffer = malloc(buf_size + 1);
+    if (argc < 2)
+        return 1;
+    int buf_size = atoi(argv[1]);
+    char *read_buffer = my_alloc(buf_size);
+    char *write_buffer = my_alloc(buf_size + 1);
     int len = 0;
     int available = 0;
     while (get_next_token(read_buffer, write_buffer, buf_size, &len, &available) > 0)
-    {
         print(write_buffer, &available, 2);
-    }
     print(write_buffer, &available, 2);
     free(read_buffer);
     free(write_buffer);
