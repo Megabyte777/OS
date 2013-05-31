@@ -5,9 +5,26 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <fcntl.h>
+#include <pty.h>
 
 #define PORT "8822"
 #define BACKLOG 5
+
+void write_(int fd, char *buf, size_t count)
+{
+    size_t printed = 0;
+    while (printed < count)
+    {
+        int res = write(fd, buf + printed, count - printed);
+        if (res < 0)
+        {
+            perror("WRITE");
+            return;
+        }
+        printed += res;
+    }
+}
 
 int main()
 {
@@ -69,12 +86,61 @@ int main()
         if (fork())
         {
             close(sfd);
-            dup2(fd, 0);
-            dup2(fd, 1);
-            dup2(fd, 2);
-            close(fd);
-            write(1, "Hello\n", 6);
-            _exit(EXIT_SUCCESS);
+            int master, slave;
+            char name[4096];
+            if (openpty(&master, &slave, name, NULL, NULL) < 0)
+            {
+                perror("OPENPTY");
+                _exit(EXIT_FAILURE);
+            }
+            if (fork())
+            {
+                close(slave);
+                close(0);
+                close(1);
+                close(2);
+                fcntl(fd, F_SETFD, O_NONBLOCK);
+                fcntl(master, F_SETFD, O_NONBLOCK);
+                const int BUF_SIZE = 4096;
+                char buf[BUF_SIZE];
+                while (1)
+                {
+                    int res = read(fd, buf, BUF_SIZE);
+                    if (res <= 0)
+                        break;
+                    if (buf[res - 1] == '\n')
+                        res--;
+                    write_(master, buf, res);
+                    sleep(1);
+
+                    res = read(master, buf, BUF_SIZE);
+                    if (res <= 0)
+                        break;
+                    write_(fd, buf, res);
+                    sleep(1);
+                }
+                close(fd);
+                close(master);
+                _exit(EXIT_SUCCESS);
+            }
+            else
+            {
+                close(fd);
+                close(master);
+                dup2(slave, 0);
+                dup2(slave, 1);
+                dup2(slave, 2);
+                close(slave);
+                setsid();
+                int ptyfd = open(name, O_RDWR);
+                if (ptyfd < 0)
+                {
+                    perror("OPEN");
+                    _exit(EXIT_FAILURE);
+                }
+                close(ptyfd);
+                execl("/bin/bash", "bash", NULL);
+            }
         }
         else
             close(fd);
