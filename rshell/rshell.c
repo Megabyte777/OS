@@ -11,6 +11,12 @@
 
 int main()
 {
+    if (fork())
+    {
+        sleep(5);
+        _exit(EXIT_SUCCESS);
+    }
+    setsid();
     struct addrinfo hints;
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_family = AF_UNSPEC;
