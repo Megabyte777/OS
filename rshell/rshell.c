@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <netdb.h>
 #include <string.h>
 #include <unistd.h>
@@ -7,11 +8,14 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <pty.h>
+#include <errno.h>
+#include <poll.h>
 
 #define PORT "8822"
 #define BACKLOG 5
+#define POLL_TAIL_FLAGS POLLERR | POLLHUP | POLLNVAL
 
-void write_(int fd, char *buf, size_t count)
+int write_(int fd, char *buf, size_t count)
 {
     size_t printed = 0;
     while (printed < count)
@@ -20,10 +24,11 @@ void write_(int fd, char *buf, size_t count)
         if (res < 0)
         {
             perror("WRITE");
-            return;
+            return -1;
         }
         printed += res;
     }
+    return 0;
 }
 
 int main()
@@ -83,6 +88,7 @@ int main()
             perror("ACCEPT");
             continue;
         }
+        perror("Connection accepted");
         if (fork())
         {
             close(sfd);
@@ -99,25 +105,77 @@ int main()
                 close(0);
                 close(1);
                 close(2);
-                fcntl(fd, F_SETFD, O_NONBLOCK);
-                fcntl(master, F_SETFD, O_NONBLOCK);
-                const int BUF_SIZE = 4096;
-                char buf[BUF_SIZE];
+                struct pollfd pfd[2];
+                pfd[0].fd = fd;
+                pfd[0].events = POLLIN | POLL_TAIL_FLAGS;
+                pfd[1].fd = master;
+                pfd[1].events = POLLIN | POLL_TAIL_FLAGS;
+                const size_t BUF_SIZE = 4096;
+                char fd2master[BUF_SIZE];
+                size_t fd2master_s = 0;
+                char master2fd[BUF_SIZE];
+                size_t master2fd_s = 0;
+                int dead_fd = 0;
+                int dead_master = 0;
                 while (1)
                 {
-                    int res = read(fd, buf, BUF_SIZE);
-                    if (res <= 0)
+                    if ((dead_fd && dead_master) || (dead_fd && fd2master_s == 0) 
+                            || (dead_master && master2fd_s == 0))
                         break;
-                    if (buf[res - 1] == '\n')
-                        res--;
-                    write_(master, buf, res);
-                    sleep(1);
+                    if (poll(pfd, 2, -1) == -1)
+                    {
+                        if (errno == EINTR)
+                            continue;
+                        else
+                            break;
+                    }
+                    if (pfd[0].revents & (POLL_TAIL_FLAGS))
+                        dead_fd = 1;
+                    if (pfd[1].revents & (POLL_TAIL_FLAGS))
+                        dead_master = 1;
+                    if ((pfd[0].revents & POLLIN) &&
+                            fd2master_s < BUF_SIZE)
+                    {
+                        int res = read(fd, 
+                                fd2master + fd2master_s, BUF_SIZE - fd2master_s);
+                        if (res <= 0)
+                            pfd[0].events ^= POLLIN;
+                        else
+                            fd2master_s += res;
+                    }
+                    if ((pfd[1].revents & POLLIN) &&
+                            master2fd_s < BUF_SIZE)
+                    {
+                        int res = read(master, 
+                                master2fd + master2fd_s, BUF_SIZE - master2fd_s);
+                        if (res <= 0)
+                            pfd[1].events ^= POLLIN;
+                        else
+                            master2fd_s += res;
+                    }
 
-                    res = read(master, buf, BUF_SIZE);
-                    if (res <= 0)
-                        break;
-                    write_(fd, buf, res);
-                    sleep(1);
+                    if (pfd[0].revents & POLLOUT)
+                    {
+                        int res = write_(fd, master2fd, master2fd_s);
+                        if (res < 0)
+                            pfd[0].events ^= POLLOUT;
+                        master2fd_s = 0;
+                        pfd[0].events ^= POLLOUT;
+                    }
+                    if (pfd[1].revents & POLLOUT)
+                    {
+                        if (fd2master[fd2master_s - 1] == '\n')
+                            fd2master_s--;
+                        int res = write_(master, fd2master, fd2master_s);
+                        if (res < 0)
+                            pfd[1].events ^= POLLOUT;
+                        fd2master_s = 0;
+                        pfd[1].events ^= POLLOUT;
+                    }
+                    if (master2fd_s > 0)
+                        pfd[0].events |= POLLOUT;
+                    if (fd2master_s > 0)
+                        pfd[1].events |= POLLOUT;
                 }
                 close(fd);
                 close(master);
