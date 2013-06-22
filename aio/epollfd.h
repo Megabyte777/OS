@@ -1,9 +1,10 @@
+#pragma once
+
 #include <sys/epoll.h>
 #include <unistd.h>
 #include <functional>
 #include <map>
 #include <stdexcept>
-#include <iostream>
 
 class epollfd
 {
