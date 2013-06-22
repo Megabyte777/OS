@@ -1,32 +1,23 @@
 #include "epollfd.h"
-#include <iostream>
-#include <string>
+#include "aio.h"
+#include "buffer.h"
+#include <cstdio>
 
-bool quit = false;
-
-void subscribe(epollfd &e)
-{
-    e.subscribe(0, EPOLLIN,
-        [&e]()
-        {
-            std::cout << "OK" << std::endl;
-            subscribe(e);
-        }, 
-        []()
-        {
-            std::cout << "Ne OK" << std::endl;
-            quit = true;
-        });
-}
+char buf[256];
 
 int main()
 {
     epollfd e;
-    subscribe(e);
-    while (!quit)
-    {
-        e.cycle();
-        std::string s;
-        std::cin >> s;
-    }
+    reader read_buf(0, buf, 256);
+    ARead<reader> aread(&e, 0, &read_buf,
+            []()
+            {
+                printf("%s\n", buf);
+            },
+            []()
+            {
+                printf("Error\n");
+            });
+    e.cycle();
 }
+
