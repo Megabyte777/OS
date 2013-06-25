@@ -9,7 +9,7 @@ int main()
 {
     epollfd e;
     reader read_buf(0, buf, 256);
-    ARead<reader> aread(&e, 0, &read_buf,
+    ARead aread(&e, 0, &read_buf,
             []()
             {
                 printf("%s\n", buf);
@@ -20,4 +20,3 @@ int main()
             });
     e.cycle();
 }
-
