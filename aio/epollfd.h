@@ -2,6 +2,7 @@
 
 #include <sys/epoll.h>
 #include <unistd.h>
+#include <cstring>
 #include <functional>
 #include <map>
 #include <stdexcept>
@@ -37,7 +38,8 @@ public:
         bool mod = modes.count(fd);
         if (mod)
             what |= modes[fd];
-        struct epoll_event ev;
+        epoll_event ev;
+        memset(&ev, 0, sizeof(ev));
         ev.events = what;
         ev.data.fd = fd;
         if (mod)
@@ -54,7 +56,8 @@ public:
             throw std::runtime_error("Such element was not found in the queue");
         queue.erase(std::make_pair(fd, what));
         modes[fd] &= ~what;
-        struct epoll_event ev;
+        epoll_event ev;
+        memset(&ev, 0, sizeof(ev));
         ev.events = modes[fd];
         ev.data.fd = fd;
         epoll_ctl(epollfd_, EPOLL_CTL_MOD, fd, &ev);
@@ -63,7 +66,7 @@ public:
 
     void cycle()
     {
-        struct epoll_event events[count];
+        epoll_event events[count];
         int nfds = 0;
         if (count > 0)
             nfds = epoll_wait(epollfd_, events, count, -1);
